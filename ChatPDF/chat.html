@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>ChatPDF - OpenAI Integration</title>
+  <link rel="stylesheet" href="bootstrap3.3/css/bootstrap.min.css">
+  <link rel="stylesheet" href="chat.css">
+</head>
+<body>
+  <div id="app" class="app">
+    <!-- LEFT SECTION -->
+    <section id="main-left" class="main-left">
+      <!-- header -->
+      <div id="header-left" class="header-left">
+        <span class="glyphicon glyphicon-file pdf-upload-btn" onclick="document.getElementById('pdf-upload').click()"></span>
+        <input type="file" id="pdf-upload" multiple accept=".pdf" style="display: none;" onchange="handlePDFUpload(event)">
+        <span class="glyphicon glyphicon-refresh" onclick="clearChat()"></span>
+        <span class="glyphicon glyphicon-option-vertical option-btn"></span>
+      </div>
+
+      <!-- PDF list -->
+      <div id="chat-list" class="chat-list">
+        <!-- PDF files will be listed here -->
+      </div>
+
+      <!-- self-profile -->
+      <div id="self-info" class="self-info">
+        <div class="profile your-photo">
+          <img src="images/ava4.jpg" alt="">
+        </div>
+        <h4 class="name your-name">ChatPDF Assistant</h4>
+        <span class="glyphicon glyphicon-cog"></span>
+      </div>
+    </section>
+
+    <!-- RIGHT SECTION -->
+    <section id="main-right" class="main-right">
+      <!-- header -->
+      <div id="header-right" class="header-right">
+        <div id="header-img" class="profile header-img">
+          <img src="images/ava2.jpg" alt="">
+        </div>
+        <h4 class="name friend-name">PDF Chat</h4>
+        <div class="some-btn">
+          <span class="glyphicon glyphicon-trash" onclick="clearChat()"></span>
+          <span class="glyphicon glyphicon-option-vertical option-btn"></span>
+        </div>
+      </div>
+
+      <!-- chat area -->
+      <div id="chat-area" class="chat-area">
+        <!-- chat content will be added here -->
+      </div>
+
+      <!-- typing area -->
+      <div id="typing-area" class="typing-area">
+        <input id="type-area" class="type-area" placeholder="Ask something about your PDFs..." onkeypress="handleKeyPress(event)">
+        <div class="attach-btn">
+          <span class="glyphicon glyphicon-send" onclick="sendMessage()"></span>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div id="creator" class="creator">
+    <p>&copy; 2023 | ChatPDF with OpenAI Integration</p>
+  </div>
+
+  <script src="bootstrap3.3/js/jquery-3.3.1.min.js"></script>
+  <script src="bootstrap3.3/js/bootstrap.min.js"></script>
+  <script>
+    let processingMessage = false;
+
+    function handlePDFUpload(event) {
+      const files = event.target.files;
+      if (files.length === 0) return;
+
+      const formData = new FormData();
+      for (let i = 0; i < files.length; i++) {
+        formData.append('files', files[i]);
+      }
+
+      // Show upload message
+      addMessage('Uploading PDFs...', false);
+      
+      fetch('/upload', {
+        method: 'POST',
+        body: formData
+      })
+      .then(response => response.json())
+      .then(data => {
+        addMessage('PDFs uploaded successfully! You can now ask questions about them.', false);
+        updatePDFList();
+      })
+      .catch(error => {
+        addMessage('Error uploading PDFs: ' + error.message, false);
+      });
+    }
+
+    function updatePDFList() {
+      fetch('/processed-pdfs')
+        .then(response => response.json())
+        .then(data => {
+          const chatList = document.getElementById('chat-list');
+          chatList.innerHTML = '';
+          
+          data.files.forEach(file => {
+            chatList.innerHTML += `
+              <div class="friends">
+                <div class="profile friends-photo">
+                  <span class="glyphicon glyphicon-file" style="font-size: 24px; color: white;"></span>
+                </div>
+                <div class="friends-credent">
+                  <span class="friends-name">${file}</span>
+                  <span class="friends-message">PDF Document</span>
+                </div>
+              </div>
+            `;
+          });
+        });
+    }
+
+    function addMessage(message, isUser) {
+      const chatArea = document.getElementById('chat-area');
+      if (isUser) {
+        chatArea.innerHTML += `
+          <div id="your-chat" class="your-chat">
+            <p class="your-chat-balloon">${message}</p>
+            <p class="chat-datetime"><span class="glyphicon glyphicon-ok"></span> ${new Date().toLocaleString()}</p>
+          </div>
+        `;
+      } else {
+        chatArea.innerHTML += `
+          <div id="friends-chat" class="friends-chat">
+            <div class="profile friends-chat-photo">
+              <img src="images/ava2.jpg" alt="">
+            </div>
+            <div class="friends-chat-content">
+              <p class="friends-chat-name">ChatPDF</p>
+              <p class="friends-chat-balloon">${message}</p>
+              <h5 class="chat-datetime">${new Date().toLocaleString()}</h5>
+            </div>
+          </div>
+        `;
+      }
+      chatArea.scrollTop = chatArea.scrollHeight;
+    }
+
+    function sendMessage() {
+      if (processingMessage) return;
+
+      const input = document.getElementById('type-area');
+      const message = input.value.trim();
+      
+      if (message === '') return;
+      
+      addMessage(message, true);
+      input.value = '';
+      
+      processingMessage = true;
+      
+      fetch('/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: message })
+      })
+      .then(response => response.json())
+      .then(data => {
+        addMessage(data.response, false);
+        processingMessage = false;
+      })
+      .catch(error => {
+        addMessage('Error: ' + error.message, false);
+        processingMessage = false;
+      });
+    }
+
+    function handleKeyPress(event) {
+      if (event.key === 'Enter') {
+        sendMessage();
+      }
+    }
+
+    function clearChat() {
+      document.getElementById('chat-area').innerHTML = '';
+      addMessage('Chat cleared. You can continue asking questions about your PDFs.', false);
+    }
+
+    // Initial load
+    updatePDFList();
+  </script>
+</body>
+</html>

@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatPDF</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        /* Toast notifications */
+        .toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .toast {
+            background: white;
+            border-radius: 0.5rem;
+            padding: 1rem 1.25rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            min-width: 300px;
+            max-width: 400px;
+            transition: opacity 0.3s ease-out;
+        }
+        
+        .toast.success {
+            border-left: 4px solid #10B981;
+        }
+        
+        .toast.error {
+            border-left: 4px solid #EF4444;
+        }
+        
+        /* Loading spinner */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Barra lateral de sessões -->
+        <aside class="sessions-sidebar">
+            <div class="sessions-header">
+                <button class="new-chat-btn" onclick="createSession()">
+                    <i class="fas fa-plus"></i>
+                    Nova Conversa
+                </button>
+            </div>
+            <div class="sessions-list">
+                <!-- Sessões serão adicionadas aqui dinamicamente -->
+            </div>
+        </aside>
+
+        <!-- Barra lateral de PDFs -->
+        <aside class="pdf-sidebar">
+            <div class="pdf-header">
+                <div class="upload-section">
+                    <button class="upload-btn" onclick="handleFileUpload()">
+                        <i class="fas fa-upload"></i>
+                        Upload PDF
+                    </button>
+                    <button class="clear-btn" onclick="clearCurrentSession()" title="Limpar PDFs e mensagens">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="pdf-list" id="pdfList">
+                <!-- PDFs serão adicionados aqui dinamicamente -->
+            </div>
+        </aside>
+
+        <!-- Área principal do chat -->
+        <main class="chat-container">
+            <header class="chat-header">
+                <h1 class="chat-title" id="chatTitle">ChatPDF</h1>
+            </header>
+            <div class="chat-area" id="chatArea">
+                <!-- Mensagens serão adicionadas aqui dinamicamente -->
+            </div>
+            <div class="input-area">
+                <div class="input-container">
+                    <input type="text" class="message-input" id="messageInput" placeholder="Digite sua mensagem..." onkeypress="handleKeyPress(event)">
+                    <button class="send-btn" onclick="sendMessage()">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div class="toast-container"></div>
+
+    <script>
+        let currentSession = null;
+        let sessions = [];
+
+        async function createSession(title = "Nova Conversa") {
+            try {
+                const response = await fetch('/sessions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title })
+                });
+                const data = await response.json();
+                if (data.error) throw new Error(data.error);
+                
+                await loadSessions();
+                switchSession(data.id);
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        async function loadSessions() {
+            try {
+                const response = await fetch('/sessions');
+                const data = await response.json();
+                sessions = data.sessions;
+                renderSessions();
+            } catch (error) {
+                showError('Erro ao carregar sessões');
+            }
+        }
+
+        function renderSessions() {
+            const sessionsList = document.querySelector('.sessions-list');
+            sessionsList.innerHTML = '';
+            
+            sessions.sort((a, b) => new Date(b.last_activity) - new Date(a.last_activity));
+            
+            sessions.forEach(session => {
+                const sessionElement = document.createElement('div');
+                sessionElement.className = `session-item${session.id === currentSession?.id ? ' active' : ''}`;
+                sessionElement.innerHTML = `
+                    <i class="fas fa-comments session-icon"></i>
+                    <div class="session-info">
+                        <div class="session-title">${escapeHtml(session.title)}</div>
+                        <div class="session-meta">${session.pdf_count} PDFs • ${session.message_count} mensagens</div>
+                    </div>
+                    <div class="session-actions">
+                        <button class="session-action-btn" onclick="renameSession('${session.id}', event)">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="session-action-btn" onclick="deleteSession('${session.id}', event)">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                sessionElement.onclick = (e) => {
+                    if (!e.target.closest('.session-action-btn')) {
+                        switchSession(session.id);
+                    }
+                };
+                sessionsList.appendChild(sessionElement);
+            });
+        }
+
+        async function switchSession(sessionId) {
+            try {
+                const response = await fetch(`/sessions/${sessionId}/pdfs`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                currentSession = data.session;
+                renderSessions();
+                clearChat();
+                updatePdfList();
+                
+                const chatTitle = document.querySelector('.chat-title');
+                chatTitle.textContent = currentSession.title;
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        async function handleFileUpload() {
+            if (!currentSession) {
+                showError('Selecione uma sessão primeiro');
+                return;
+            }
+
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.multiple = true;
+            fileInput.accept = '.pdf';
+            
+            fileInput.onchange = async () => {
+                const files = Array.from(fileInput.files);
+                if (files.length === 0) return;
+
+                const formData = new FormData();
+                files.forEach(file => formData.append('files', file));
+                formData.append('session_id', currentSession.id);
+
+                try {
+                    const response = await fetch('/upload', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await response.json();
+                    
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
+                    
+                    currentSession = data.session;
+                    updatePdfList();
+                    await loadSessions();
+                    showSuccess('PDFs carregados');
+                } catch (error) {
+                    showError(error.message);
+                }
+            };
+
+            fileInput.click();
+        }
+
+        async function deletePdf(pdfName, event) {
+            event.stopPropagation();
+            
+            try {
+                const response = await fetch(`/sessions/${currentSession.id}/pdfs/${encodeURIComponent(pdfName)}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                currentSession = data.session;
+                updatePdfList();
+                await loadSessions();
+                showSuccess('PDF excluído');
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        function updatePdfList() {
+            const pdfList = document.getElementById('pdfList');
+            pdfList.innerHTML = '';
+            
+            if (!currentSession?.pdfs?.length) {
+                pdfList.innerHTML = `
+                    <div class="pdf-info-text">
+                        <i class="fas fa-cloud-upload-alt" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                        <div>Faça upload de PDFs para começar</div>
+                    </div>`;
+                return;
+            }
+            
+            currentSession.pdfs.forEach(pdf => {
+                const pdfElement = document.createElement('div');
+                pdfElement.className = 'pdf-item';
+                pdfElement.innerHTML = `
+                    <i class="fas fa-file-pdf pdf-icon"></i>
+                    <div class="pdf-info">
+                        <div class="pdf-name" title="${escapeHtml(pdf.name)}">${escapeHtml(pdf.name)}</div>
+                    </div>
+                    <button class="pdf-delete-btn" onclick="deletePdf('${escapeHtml(pdf.name)}', event)" title="Excluir PDF">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+                pdfList.appendChild(pdfElement);
+            });
+        }
+
+        async function sendMessage() {
+            if (!currentSession) {
+                showError('Selecione uma sessão primeiro');
+                return;
+            }
+
+            const messageInput = document.querySelector('.message-input');
+            const message = messageInput.value.trim();
+            if (!message) return;
+
+            messageInput.value = '';
+            addMessage('user', message);
+
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message,
+                        session_id: currentSession.id
+                    })
+                });
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                addMessage('assistant', data.response);
+                currentSession = data.session;
+                await loadSessions();
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        function addMessage(role, message) {
+            const chatArea = document.getElementById('chatArea');
+            const messageElement = createMessageElement(role, message);
+            chatArea.appendChild(messageElement);
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        function createMessageElement(role, message) {
+            const div = document.createElement('div');
+            div.className = `message ${role}`;
+            
+            const time = new Date().toLocaleTimeString();
+            
+            div.innerHTML = `
+                <div class="message-content">
+                    ${message}
+                    <div class="message-time">${time}</div>
+                </div>
+            `;
+            
+            return div;
+        }
+
+        function clearChat() {
+            const chatArea = document.getElementById('chatArea');
+            chatArea.innerHTML = '';
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+
+        function escapeHtml(unsafe) {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = message;
+            
+            const container = document.querySelector('.toast-container');
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function showError(message) {
+            showToast(message, 'error');
+        }
+
+        function showSuccess(message) {
+            showToast(message, 'success');
+        }
+
+        async function deleteSession(sessionId, event) {
+            event.stopPropagation();
+            
+            try {
+                const response = await fetch(`/sessions/${sessionId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Erro ao excluir sessão');
+                }
+                
+                if (currentSession?.id === sessionId) {
+                    currentSession = null;
+                }
+                
+                await loadSessions();
+                if (sessions.length === 0) {
+                    await createSession();
+                } else if (!currentSession) {
+                    await switchSession(sessions[0].id);
+                }
+                
+                showSuccess('Sessão excluída');
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        async function renameSession(sessionId, event) {
+            event.stopPropagation();
+            const session = sessions.find(s => s.id === sessionId);
+            if (!session) return;
+            
+            const newTitle = prompt('Novo título:', session.title);
+            if (!newTitle || newTitle === session.title) return;
+            
+            try {
+                const response = await fetch(`/sessions/${sessionId}/title`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title: newTitle })
+                });
+                
+                const data = await response.json();
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                if (currentSession?.id === sessionId) {
+                    currentSession.title = newTitle;
+                    document.querySelector('.chat-title').textContent = newTitle;
+                }
+                
+                await loadSessions();
+                showSuccess('Título atualizado');
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        async function clearCurrentSession() {
+            if (!currentSession) return;
+            
+            try {
+                const response = await fetch(`/sessions/${currentSession.id}/clear`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                clearChat();
+                updatePdfList();
+                await loadSessions();
+                showSuccess('Conversa limpa');
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        async function init() {
+            await loadSessions();
+            if (sessions.length === 0) {
+                await createSession();
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

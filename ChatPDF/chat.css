@@ -1,0 +1,336 @@
+html, body {
+    margin: 0;
+    padding: 0;
+}
+
+.app {
+    border: 3px solid #031426;
+    width: 95%;
+    margin: 25px auto;
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    grid-auto-rows: minmax(500px, calc(100vh - 100px));
+}
+
+.profile {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 45px;
+    width: 45px;
+    overflow: hidden;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.profile img {
+    width: inherit;
+}
+
+.main-left {
+    background: #031426;
+    display: grid;
+    grid-template-rows: 1fr 6fr 1fr;
+    grid-auto-flow: row;
+}
+
+.header-left {
+    padding: 10px;
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-columns: 1fr 1fr 6fr;
+    box-shadow: 0px 3px 5px rgba(0, 0, 0, 0.4);
+}
+
+.header-left .glyphicon {
+    color: white;
+    font-size: 1.5em;
+    cursor: pointer;
+    margin: 0px 5px;
+}
+
+.hamburger-btn, .search-btn {
+    place-self: center start;
+}
+
+.option-btn {
+    place-self: center end;
+}
+
+.chat-list {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-auto-rows: 100px;
+    overflow-y: auto;
+}
+
+.chat-list::-webkit-scrollbar {
+    width: 0px;
+}
+
+.friends {
+    padding: 5px;
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-columns: 1fr 4fr 1fr;
+    cursor: pointer;
+    transition: 0.2s linear;
+}
+
+.friends:hover {
+    background: #041a31;
+}
+
+.friends-photo {
+    place-self: center;
+}
+
+.friends-credent {
+    padding: 5px;
+    display: grid;
+    grid-auto-flow: row;
+    grid-template-rows: 1fr 1fr;
+    place-items: center start;
+    overflow: hidden;
+}
+
+.friends-name, .friends-message {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-weight: 600;
+}
+
+.friends-name {
+    color: white;
+    place-self: end start;
+    font-size: 1.25em;
+}
+
+.friends-message {
+    color: #777;
+    font-size: 0.85em;
+    place-self: start;
+}
+
+.notif-badge {
+    place-self: center;
+    background: white;
+    color: #555;
+}
+
+.self-info {
+    padding: 5px;
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-columns: 1fr 4fr 1fr;
+    place-items: center;
+    background: #041b33;
+    box-shadow: 0px -3px 5px rgba(0, 0, 0, 0.4);
+}
+
+.your-photo {
+    height: 50px;
+    width: 50px;
+    place-content: center start;
+    place-self: center end;
+}
+
+.your-name {
+    color: white;
+    margin-left: 20px;
+    place-self: center start;
+}
+
+.self-info .glyphicon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.2em;
+    color: white;
+    place-content: center end;
+    place-self: center;
+    cursor: pointer;
+    transition: 0.2s linear;
+}
+
+.self-info .glyphicon:hover {
+    transform: rotate(30deg);
+}
+
+/* END OF LEFT SECTION */
+/* START OF RIGHT SECTION */
+
+.main-right {
+    background: #dedede;
+    display: grid;
+    grid-auto-flow: row;
+    grid-template-rows: 1fr 6fr 1fr;
+}
+
+.header-right {
+    padding: 20px;
+    background: white;
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-columns: 6fr 2fr;
+    place-items: center;
+    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.4);
+}
+
+.header-img {
+    place-content: center start;
+    place-self: center end;
+}
+
+.name {
+    font-size: 1.2em;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.friend-name {
+    place-self: center start;
+    margin-left: 20px;
+    color: #485373;
+}
+
+.some-btn {
+    font-size: 1.5em;
+    place-items: center end;
+}
+
+.some-btn .glyphicon {
+    margin: 0px 10px;
+    cursor: pointer;
+}
+
+.chat-area {
+    padding: 40px;
+    overflow-y: auto;
+}
+
+.chat-area::-webkit-scrollbar {
+    width: 5px;
+}
+
+.chat-area::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.chat-area::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 5px;
+}
+
+.friends-chat {
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-columns: 1fr 9fr;
+    margin: 20px 0px;
+}
+
+.friends-chat-photo {
+    place-self: start end;
+    margin: 0px 5px;
+}
+
+.friends-chat-content {
+    display: grid;
+    grid-auto-flow: row;
+    grid-template-rows: 1fr min-content min-content;
+    place-items: start;
+}
+
+.friends-chat-name {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #485373;
+    font-size: 1em;
+    margin: 0px 0px 3px 0px;
+    font-weight: bold;
+}
+
+.friends-chat-balloon {
+    max-width: 90%;
+    padding: 10px 20px;
+    margin: 0;
+    min-width: min-content;
+    border-radius: 0px 20px 20px 20px; /* TL-TR-BR-BL*/
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #485373;
+    background: white;
+    font-size: 0.9em;
+}
+
+.chat-datetime {
+    margin: 3px 10px;
+    font-size: 0.75em;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #aaa;
+}
+
+.your-chat {
+    display: grid;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    padding-right: 10px;
+    grid-auto-flow: row;
+    grid-template-rows: min-content min-content;
+    place-items: start end;
+}
+
+.your-chat-balloon {
+    max-width: 80%;
+    padding: 10px 20px;
+    margin: 0;
+    min-width: min-content;
+    border-radius: 20px 20px 0px 20px; /* TL-TR-BR-BL*/
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: white;
+    background: darkslateblue;
+    font-size: 0.9em;
+}
+
+.your-chat-datetime .glyphicon {
+    margin-right: 5px;
+    color: green;
+}
+
+.typing-area {
+    background: white;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    padding: 10px 20px;
+    box-shadow: 0px -2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.type-area {
+    border: none;
+    outline: none;
+    padding: 10px;
+    font-size: 1em;
+    color: #555;
+    width: 100%;
+}
+
+.send-btn {
+    color: #0099ff;
+    font-size: 1.5em;
+    cursor: pointer;
+    transition: 0.2s linear;
+    margin-left: 15px;
+}
+
+.send-btn:hover {
+    color: #0066cc;
+}
+
+.creator {
+    text-align: center;
+    padding: 5px;
+    color: #777;
+}
+
+.creator span {
+    font-weight: bold;
+    color: #0099ff;
+    cursor: pointer;
+}
