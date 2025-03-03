@@ -10,4 +10,4 @@ Chat template for Web Application
 - Bootstrap v3.3 (used for Glyphicons only)
 
 ### Preview
-![alt text](https://i.imgur.com/bI7Oy6z.png)
+![Preview da tela do chat](images/tela.png)
