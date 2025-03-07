@@ -1,0 +1,8 @@
+crewai[tools]
+python-dotenv
+serpapi
+chromadb
+langchain
+beautifulsoup4
+requests
+unstructured
